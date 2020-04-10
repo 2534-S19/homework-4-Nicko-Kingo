@@ -26,7 +26,7 @@ int main(void)
     char *response = "\n\n\r2534 is the best course in the curriculum!\r\n\n";
 
     // TODO: Declare the variables that main uses to interact with your state machine.
-    char phrase = 0;
+    int phrase = 0;
 
     // Stops the Watchdog timer.
     initBoard();
@@ -36,15 +36,15 @@ int main(void)
     const eUSCI_UART_ConfigV1 uartConfig =
     {
             EUSCI_A_UART_CLOCKSOURCE_SMCLK,
-            78,
-            2,
+            312,
+            8,
             0,
             EUSCI_A_UART_NO_PARITY,
             EUSCI_A_UART_LSB_FIRST,
             EUSCI_A_UART_ONE_STOP_BIT,
     };
-
-
+    int i;
+    //I output some numbers but not all of them
 
     // TODO: Initialize EUSCI_A0
     initUART(EUSCI_A0_BASE, uartConfig);
@@ -63,11 +63,19 @@ int main(void)
             UART_transmitData(EUSCI_A0_BASE, rChar);
         }
 
-        if(charFSM(rChar) && phrase != COMPLETE)
-            phrase += rChar;
 
-        if(phrase != ONE && phrase != TWO && phrase != THREE && phrase != COMPLETE)
-            phrase = 0;
+            if(rChar == '2')
+                phrase = ONE;
+            else if(rChar == '5' && phrase == ONE)
+                phrase = TWO;
+            else if(rChar == '3' && phrase == TWO)
+                phrase = THREE;
+            else if(rChar == '4' && phrase == THREE)
+                phrase = COMPLETE;
+            else
+                phrase = 0;
+
+
 
 
         // TODO: If the FSM indicates a successful string entry, transmit the response string.
@@ -75,8 +83,9 @@ int main(void)
         //       Make sure to reset the success variable after transmission.
         if(phrase == COMPLETE)
         {
-            if(UARTCanSend(EUSCI_A0_BASE))
-                UART_transmitData(EUSCI_A0_BASE, *response);
+            while(!UARTCanSend(EUSCI_A0_BASE));
+            for(i = 0; i < 48; i++)
+                UART_transmitData(EUSCI_A0_BASE, response[i]);
             phrase = 0;
         }
     }
@@ -92,7 +101,7 @@ bool charFSM(char rChar)
 {
     bool finished = false;
 
-    if(rChar == 2 || rChar == 5 || rChar == 3 || rChar == 4)
+    if(rChar == 0010 || rChar == 0101 || rChar == 0011 || rChar == 0100)
         return true;
 
     return finished;
