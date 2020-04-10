@@ -4,35 +4,21 @@
 uint8_t  UARTGetChar (uint32_t moduleInstance);
 bool UARTHasChar(uint32_t moduleInstance);
 bool UARTCanSend(uint32_t moduleInstance);
+void initUART(uint32_t moduleInstance, const eUSCI_UART_ConfigV1 config);
+//My function prototypes
 
-
-
-void initUART(uint32_t moduleInstance, const eUSCI_UART_ConfigV1 config)
-{
-    UART_initModule(moduleInstance, &config);
-    UART_enableModule(moduleInstance);
-    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P1, GPIO_PIN2, GPIO_PRIMARY_MODULE_FUNCTION);
-    GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P1, GPIO_PIN3,GPIO_PRIMARY_MODULE_FUNCTION);
-}
-
-
-
-
-
+//My approach was to use the provided documents on canvas, and Professor Thweatt's recommendations to begin,
+//I then went my own way towards the solution
 
 int main(void)
 {
     char rChar;
     char *response = "\n\n\r2534 is the best course in the curriculum!\r\n\n";
-
-    // TODO: Declare the variables that main uses to interact with your state machine.
     int phrase = 0;
+    int i;
 
     // Stops the Watchdog timer.
     initBoard();
-    // TODO: Declare a UART config struct as defined in uart.h.
-    //       To begin, configure the UART for 9600 baud, 8-bit payload (LSB first), no parity, 1 stop bit.
-
     const eUSCI_UART_ConfigV1 uartConfig =
     {
             EUSCI_A_UART_CLOCKSOURCE_SMCLK,
@@ -43,24 +29,19 @@ int main(void)
             EUSCI_A_UART_LSB_FIRST,
             EUSCI_A_UART_ONE_STOP_BIT,
     };
-    int i;
-    //I output some numbers but not all of them
 
     // TODO: Initialize EUSCI_A0
     initUART(EUSCI_A0_BASE, uartConfig);
-    //UART_ableInterrupt(EUSCI_A0_BASE,EUSCI_A_UART_RECEIVE_INTERRUPT);
     while(1)
     {
-        // TODO: Check the receive interrupt flag to see if a received character is available.
-        //       Return 0xFF if no character is available.
         rChar = UARTGetChar (EUSCI_A0_BASE);
-        // TODO: If an actual character was received, echo the character to the terminal AND use it to update the FSM.
-        //       Check the transmit interrupt flag prior to transmitting the character.
+        //checks if there is a character and grabs it
+
 
         if(rChar != -1)
         {
-            while(!UARTCanSend(EUSCI_A0_BASE));
-            UART_transmitData(EUSCI_A0_BASE, rChar);
+            while(!UARTCanSend(EUSCI_A0_BASE)); //waits for the buffer
+            UART_transmitData(EUSCI_A0_BASE, rChar); //outputs the character to the terminal
         }
 
 
@@ -74,18 +55,13 @@ int main(void)
                 phrase = COMPLETE;
             else
                 phrase = 0;
+            //My version of the state machine, I put it here because it worked for me at at the time
 
-
-
-
-        // TODO: If the FSM indicates a successful string entry, transmit the response string.
-        //       Check the transmit interrupt flag prior to transmitting each character and moving on to the next one.
-        //       Make sure to reset the success variable after transmission.
-        if(phrase == COMPLETE)
+        if(phrase == COMPLETE) //only runs if the numbers are inputted in order
         {
             while(!UARTCanSend(EUSCI_A0_BASE));
             for(i = 0; i < 48; i++)
-                UART_transmitData(EUSCI_A0_BASE, response[i]);
+                UART_transmitData(EUSCI_A0_BASE, response[i]); //outputs each character in the *char string
             phrase = 0;
         }
     }
@@ -101,21 +77,20 @@ bool charFSM(char rChar)
 {
     bool finished = false;
 
-    if(rChar == 0010 || rChar == 0101 || rChar == 0011 || rChar == 0100)
+    if(rChar == '2' || rChar == '5' || rChar == '3' || rChar == '4')
         return true;
 
     return finished;
 }
 
-uint8_t  UARTGetChar (uint32_t moduleInstance)
+uint8_t  UARTGetChar (uint32_t moduleInstance) //grabs the character in the receipt buffer
 {
     if(UARTHasChar(EUSCI_A0_BASE))
         return -1;
     return UART_receiveData(EUSCI_A0_BASE);
-
 }
 
-bool UARTHasChar(uint32_t moduleInstance)
+bool UARTHasChar(uint32_t moduleInstance)//checks to see if there is a character to grab
 {
     if(!UART_getInterruptStatus(EUSCI_A0_BASE,EUSCI_A_UART_RECEIVE_INTERRUPT_FLAG))
         return false;
@@ -123,10 +98,18 @@ bool UARTHasChar(uint32_t moduleInstance)
 
 }
 
-bool UARTCanSend(uint32_t moduleInstance)
+bool UARTCanSend(uint32_t moduleInstance)//checks to see if it can even output the character
 {
     if(!UART_getInterruptStatus(EUSCI_A0_BASE,EUSCI_A_UART_TRANSMIT_INTERRUPT_FLAG))
         return false;
     return true;
-
 }
+
+void initUART(uint32_t moduleInstance, const eUSCI_UART_ConfigV1 config) //initializes the UART
+{
+    UART_initModule(moduleInstance, &config);
+    UART_enableModule(moduleInstance);
+    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P1, GPIO_PIN2, GPIO_PRIMARY_MODULE_FUNCTION);
+    GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P1, GPIO_PIN3,GPIO_PRIMARY_MODULE_FUNCTION);
+}
+
